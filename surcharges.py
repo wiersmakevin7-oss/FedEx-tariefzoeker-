@@ -20,7 +20,7 @@ def calculate_surcharges(lines, pallet, service=''):
         qty = int(line['Aantal'])
         charges = []
         if pallet:
-            limit = 178 if service == 'Regional Economy Freight' else 157
+            limit = 178 if service in ('Regional Economy Freight', 'FedEx Priority Express Freight', 'FedEx Priority Freight') else 157
             if max(line[k] for k in ('Lengte cm', 'Breedte cm', 'Hoogte cm')) > limit:
                 charges.append(('Bijkomende behandeling vracht', 55, True))
             if line.get('Niet stapelbaar', False):

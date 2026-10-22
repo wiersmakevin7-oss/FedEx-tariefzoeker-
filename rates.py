@@ -6,6 +6,8 @@ import openpyxl
 from surcharges import package_dimensions
 
 SERVICES = {
+    'D1': 'FedEx First', 'D2': 'FedEx Priority Express', 'D3': 'FedEx Priority',
+    'D4F': 'FedEx Priority Express Freight', 'D5F': 'FedEx Priority Freight',
     'IPE': 'International Priority Express', 'IP': 'International Priority',
     'IE': 'International Economy', 'RE': 'Regional Economy',
     'IPF': 'International Priority Freight', 'IEF': 'International Economy Freight',

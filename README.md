@@ -1,5 +1,18 @@
 # FedEx tarieven
 
+## Nederland binnenland
+
+Richting Binnenland gebruikt voorstel 281995, geldig vanaf 22 oktober 2026.
+Bron: aangeleverde PDF effbb607-1f17-4fc4-82b8-31ea0f2ca7ee.pdf, pagina's 4-11.
+Alleen CUSTOM: FedEx First, Priority Express, Priority, Priority Express Freight
+en Priority Freight. Envelope en Pak zijn uitgesloten. Vaste gewichtsstaffels
+zijn totaalprijzen (door gebruiker bevestigd); alleen Per Kg-regels worden
+vermenigvuldigd met het naar hele kg boven afgeronde tariefgewicht.
+De Priority-prijs bij 70.5 kg is letterlijk EUR 24.61, zoals in de bron.
+Bestaande fuel- en marge-instellingen gelden ook hier; vul het toepasselijke
+binnenlandse fuelpercentage in. Binnenlandse vrachtafhandeling geldt boven
+178 cm. Resultaten vermelden de PDF-pagina in plaats van een Excel-rij.
+
 Zelfstandige Streamlit-app met het aangeleverde FedEx NL Courtesy Net Rates bestand.
 Start: `python -m streamlit run app.py --server.port 8504`.
 

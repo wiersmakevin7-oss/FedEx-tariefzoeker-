@@ -6,6 +6,7 @@ import streamlit as st
 from rates import load_book, shipment, quote, amounts
 from surcharges import calculate_surcharges
 from settings_store import DEFAULT, MODES, load, save
+from domestic import load_domestic
 
 ROOT = Path(__file__).resolve().parent
 BOOK = ROOT/'data'/'NL Courtesy-Net-Rates-15202126-English_TFF.xlsx'
@@ -57,11 +58,16 @@ def cached_book(stamp):
 st.title('FedEx tarieven')
 st.caption('FedEx · TFF · NL Courtesy Net Rates · EUR')
 rates, destinations = cached_book(BOOK.stat().st_mtime_ns)
+domestic_rates, domestic_destinations = load_domestic()
+rates = rates + domestic_rates
+destinations = destinations + domestic_destinations
 with st.sidebar:
     st.subheader('Tariefbron')
     st.write('NL Courtesy Net Rates')
     st.caption('Ingangsdatum: 27 januari 2026 · locatie ZWO')
     st.download_button('Excel downloaden', BOOK.read_bytes(), file_name=BOOK.name)
+    st.write('Nederland Domestic express')
+    st.caption('Ingangsdatum: 22 oktober 2026 - voorstel 281995')
     st.divider()
     fuel = st.number_input('Fuel surcharge %', min_value=0.0, value=settings['fuel'], step=0.1, format='%.2f', key='fuel')
     margin = st.number_input('Winstmarge %', min_value=0.0, value=settings['margin'], step=0.5, format='%.2f', key='margin')
@@ -78,10 +84,10 @@ with st.sidebar:
             st.error(str(exc))
 
 a,b,c = st.columns([1,2,1])
-direction = a.selectbox('Richting', ['Export','Import'])
+direction = a.selectbox('Richting', ['Export','Import','Binnenland'])
 countries = sorted({d['country'] for d in destinations if d['direction']==direction})
-country = b.selectbox('Bestemmingsland' if direction=='Export' else 'Land van herkomst', countries, index=countries.index('Germany'))
-postcode = c.text_input('Postcode', '10115')
+country = b.selectbox('Land van herkomst' if direction=='Import' else 'Bestemmingsland', countries, index=countries.index('Germany') if 'Germany' in countries else 0, disabled=direction=='Binnenland')
+postcode = c.text_input('Postcode', '1011AB' if direction=='Binnenland' else '10115', key='postcode_domestic' if direction=='Binnenland' else 'postcode_international')
 kind = st.radio('Zendingstype',['Pakket','Pallet'], horizontal=True)
 pallet = kind=='Pallet'
 st.subheader('Zending')
@@ -115,7 +121,7 @@ for r in results:
     except ValueError as exc:
         st.error(str(exc))
         st.stop()
-    rows.append({'Service':r['service'],'Zone':r['zone'],'Tarief kg':r['charged'],'Basis EUR':base,'Toeslagen EUR':extra,'Fuel EUR':surcharge,'Inkoop EUR':purchase,'Verkoop EUR':sale,'Winst EUR':profit,'Excel-rij':r['row']})
+    rows.append({'Service':r['service'],'Zone':r['zone'],'Tarief kg':r['charged'],'Basis EUR':base,'Toeslagen EUR':extra,'Fuel EUR':surcharge,'Inkoop EUR':purchase,'Verkoop EUR':sale,'Winst EUR':profit,('PDF-pagina' if direction=='Binnenland' else 'Excel-rij'):r['row']})
 rows.sort(key=lambda row:row['Inkoop EUR'])
 st.subheader('Tarieven')
 cols = st.columns(3)
