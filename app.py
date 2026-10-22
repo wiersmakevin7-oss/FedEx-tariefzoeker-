@@ -9,7 +9,7 @@ from settings_store import DEFAULT, MODES, load, save
 
 ROOT = Path(__file__).resolve().parent
 BOOK = ROOT/'data'/'NL Courtesy-Net-Rates-15202126-English_TFF.xlsx'
-st.set_page_config(page_title='Courtesy Tariefzoeker', layout='wide')
+st.set_page_config(page_title='FedEx tarieven', layout='wide')
 
 def require_login():
     try:
@@ -17,7 +17,7 @@ def require_login():
     except FileNotFoundError:
         password = ''
     if not isinstance(password, str) or not password:
-        st.title('Courtesy Tariefzoeker')
+        st.title('FedEx tarieven')
         st.warning('Toegang nog niet ingesteld. Voeg APP_PASSWORD toe aan Streamlit Secrets.')
         st.stop()
     if st.session_state.get('authenticated', False):
@@ -25,7 +25,7 @@ def require_login():
             st.session_state.clear()
             st.rerun()
         return
-    st.title('Courtesy Tariefzoeker')
+    st.title('FedEx tarieven')
     with st.form('login'):
         entered = st.text_input('Wachtwoord', type='password')
         submitted = st.form_submit_button('Inloggen')
@@ -54,7 +54,7 @@ settings = st.session_state['saved_settings']
 def cached_book(stamp):
     return load_book(BOOK)
 
-st.title('Courtesy Tariefzoeker')
+st.title('FedEx tarieven')
 st.caption('FedEx · TFF · NL Courtesy Net Rates · EUR')
 rates, destinations = cached_book(BOOK.stat().st_mtime_ns)
 with st.sidebar:

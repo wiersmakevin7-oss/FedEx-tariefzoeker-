@@ -1,4 +1,4 @@
-# Courtesy Tariefzoeker
+# FedEx tarieven
 
 Zelfstandige Streamlit-app met het aangeleverde FedEx NL Courtesy Net Rates bestand.
 Start: `python -m streamlit run app.py --server.port 8504`.
