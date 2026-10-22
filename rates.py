@@ -3,6 +3,7 @@ import math
 import re
 from decimal import Decimal, ROUND_HALF_UP
 import openpyxl
+from surcharges import package_dimensions
 
 SERVICES = {
     'IPE': 'International Priority Express', 'IP': 'International Priority',
@@ -91,7 +92,8 @@ def shipment(lines, pallet):
         dim = math.ceil(length)*math.ceil(width)*math.ceil(height)/5000
         actual += qty*kg
         volume += qty*length*width*height/1e6
-        billable += qty*max(kg,dim,68 if pallet else 0)
+        minimum = 68 if pallet else (18 if package_dimensions(line)[0] else 0)
+        billable += qty*max(kg,dim,minimum)
         count += qty
     if not count:
         raise ValueError('Voeg minimaal een pakket of pallet toe.')
@@ -117,10 +119,10 @@ def quote(rates, destinations, direction, country, postcode, pallet, weight):
         results.append(dict(service=SERVICES[service],zone=zone,base=base,charged=charged,rate=r['price'],row=r['row'],per_kg=r['per_kg']))
     return sorted(results,key=lambda r:r['base'])
 
-def amounts(base, fuel, margin, mode='Opslag op inkoop'):
+def amounts(base, fuel, margin, mode='Opslag op inkoop', extra=0, fuel_extra=0):
     base,fuel,margin = map(lambda x:Decimal(str(x)), (base,fuel,margin))
-    surcharge = base*fuel/100
-    purchase = base+surcharge
+    surcharge = (base + Decimal(str(fuel_extra)))*fuel/100
+    purchase = base+surcharge+Decimal(str(extra))
     if mode=='Marge op verkoop':
         if margin>=100:
             raise ValueError('Marge op verkoop moet lager zijn dan 100%.')

@@ -4,6 +4,7 @@ import io
 import hmac
 import streamlit as st
 from rates import load_book, shipment, quote, amounts
+from surcharges import calculate_surcharges
 from settings_store import DEFAULT, MODES, load, save
 
 ROOT = Path(__file__).resolve().parent
@@ -85,9 +86,12 @@ kind = st.radio('Zendingstype',['Pakket','Pallet'], horizontal=True)
 pallet = kind=='Pallet'
 st.subheader('Zending')
 defaults = [{'Aantal':1,'Lengte cm':120.0 if pallet else 40.0,'Breedte cm':80.0 if pallet else 30.0,'Hoogte cm':100.0 if pallet else 20.0,'Kg per stuk':100.0 if pallet else 5.0}]
+flag = 'Niet stapelbaar' if pallet else 'Afwijkende verpakking'
+defaults[0][flag] = False
 lines = st.data_editor(defaults, num_rows='dynamic', hide_index=True, use_container_width=True, key=f'lines_{kind}', column_config={
     'Aantal':st.column_config.NumberColumn(min_value=1,step=1,required=True),
-    **{k:st.column_config.NumberColumn(min_value=0.01,required=True) for k in defaults[0] if k!='Aantal'}})
+    flag:st.column_config.CheckboxColumn(default=False, help='EUR 200 per niet-stapelbare pallet.' if pallet else 'Bijvoorbeeld geen kartonnen buitendoos, folie, cilindervorm, banden of uitstekende delen.'),
+    **{k:st.column_config.NumberColumn(min_value=0.01,required=True) for k in defaults[0] if k not in ('Aantal',flag)}})
 try:
     actual,volume,weight,count = shipment(lines,pallet)
 except ValueError as exc:
@@ -96,33 +100,42 @@ except ValueError as exc:
 columns = st.columns(4)
 for col,label,value in zip(columns,['Aantal','Werkelijk gewicht','Volume','Tariefgewicht'],[f'{count:g}',f'{actual:.2f} kg',f'{volume:.3f} m3',f'{weight:.2f} kg']):
     col.metric(label,value)
-st.caption('Volumegewicht: L × B × H / 5.000. Hoogste gewicht per stuk; voor Freight minimaal 68 kg per pallet. Staffels worden naar boven gekozen.')
+st.caption('Volumegewicht: L × B × H / 5.000. Hoogste gewicht per stuk; Freight minimaal 68 kg per pallet, bijkomende behandeling afmetingen minimaal 18 kg per pakket.')
 results = quote(rates,destinations,direction,country,postcode,pallet,weight)
 if not results:
     st.warning('Geen passend tarief. Controleer land, volledige postcode en gewicht; deze service of zone kan ontbreken in de staffel.')
     st.stop()
 rows=[]
+surcharge_details=[]
 for r in results:
+    extra, fuel_extra, details = calculate_surcharges(lines,pallet,r['service'])
+    surcharge_details.extend({'Service':r['service'],**detail} for detail in details)
     try:
-        base,surcharge,purchase,sale,profit = amounts(r['base'],fuel,margin,margin_mode)
+        base,surcharge,purchase,sale,profit = amounts(r['base'],fuel,margin,margin_mode,extra,fuel_extra)
     except ValueError as exc:
         st.error(str(exc))
         st.stop()
-    rows.append({'Service':r['service'],'Zone':r['zone'],'Tarief kg':r['charged'],'Basis EUR':base,'Fuel EUR':surcharge,'Inkoop EUR':purchase,'Verkoop EUR':sale,'Winst EUR':profit,'Excel-rij':r['row']})
+    rows.append({'Service':r['service'],'Zone':r['zone'],'Tarief kg':r['charged'],'Basis EUR':base,'Toeslagen EUR':extra,'Fuel EUR':surcharge,'Inkoop EUR':purchase,'Verkoop EUR':sale,'Winst EUR':profit,'Excel-rij':r['row']})
+rows.sort(key=lambda row:row['Inkoop EUR'])
 st.subheader('Tarieven')
 cols = st.columns(3)
 cols[0].metric('Laagste inkoop',f"EUR {rows[0]['Inkoop EUR']:.2f}")
 cols[1].metric('Verkoop',f"EUR {rows[0]['Verkoop EUR']:.2f}")
 cols[2].metric('Winst',f"EUR {rows[0]['Winst EUR']:.2f}")
 st.dataframe(rows,hide_index=True,use_container_width=True)
+if surcharge_details:
+    with st.expander('Specificatie toeslagen'):
+        st.dataframe(surcharge_details,hide_index=True,use_container_width=True)
 out=io.StringIO()
 writer=csv.DictWriter(out,fieldnames=list(rows[0]),delimiter=';')
 writer.writeheader()
 writer.writerows(rows)
 st.download_button('Vergelijking downloaden',out.getvalue().encode('utf-8-sig'),file_name='courtesy_tarieven.csv',mime='text/csv')
 with st.expander('Berekening en voorwaarden'):
-    st.write('Inkoop = basistarief + basistarief × fuelpercentage / 100.')
+    st.write('Inkoop = basistarief + toeslagen + (basistarief + fuelplichtige toeslagen) × fuelpercentage / 100. Niet-stapelbaar valt buiten de fuelgrondslag.')
     st.write('Verkoop = inkoop × (1 + opslag / 100).' if margin_mode=='Opslag op inkoop' else 'Verkoop = inkoop / (1 - marge / 100).')
-    st.write('Indicatieve net rates uit de aangeleverde offerte. Exclusief overige toeslagen, btw, invoerrechten en speciale handling. Servicebeschikbaarheid en maximale afmetingen moeten bij FedEx worden bevestigd.')
+    st.write('Indicatieve net rates en toeslagen uit de aangeleverde offerte. Exclusief buitengebied, third-party billing, adrescorrectie, aangegeven waarde, grote vraag, btw, invoerrechten en niet-opgenomen diensten. Servicebeschikbaarheid en maximale afmetingen moeten bij FedEx worden bevestigd.')
+    st.link_button('FedEx toeslagregels 2026','https://www.fedex.com/nl-nl/shipping/rates/fedex-rates.html')
+    st.link_button('FedEx fuelgrondslag','https://www.fedex.com/nl-nl/shipping/surcharges.html')
     st.write('Alle ingevoerde regels vormen samen een zending. Afmetingen zijn inclusief verpakking/pallet.')
     st.link_button('FedEx gewichten en afmetingen','https://images.fedex.com/content/dam/fedex/international/rates/fedex-rates-domestic-en-nl.pdf')
