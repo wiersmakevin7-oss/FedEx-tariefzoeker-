@@ -37,3 +37,12 @@ APP_PASSWORD = "kies_een_eigen_wachtwoord"
 Zonder ingesteld wachtwoord blijft de tariefzoeker geblokkeerd. Lokaal plaats
 je dezelfde instelling in `.streamlit/secrets.toml` (uitgesloten van Git).
 De login beschermt de app; een openbare GitHub-repository blijft openbaar.
+
+## Fuel en marge bewaren
+
+Voeg ook `GITHUB_TOKEN = "jouw_token"` toe aan Secrets. Gebruik een fine-grained
+token met Contents: Read and write op `wiersmakevin7-oss/FedEx-tariefzoeker-`.
+De knop Instellingen opslaan bewaart fuel, marge en margebasis in
+`courtesy_settings.json` op main. Nieuwe sessies laden deze gedeelde waarden.
+Zonder token werkt rekenen wel, maar permanent opslaan is uitgeschakeld.
+Het instellingenbestand heeft dezelfde zichtbaarheid als de repository.

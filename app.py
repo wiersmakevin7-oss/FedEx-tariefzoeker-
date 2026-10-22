@@ -4,6 +4,7 @@ import io
 import hmac
 import streamlit as st
 from rates import load_book, shipment, quote, amounts
+from settings_store import DEFAULT, MODES, load, save
 
 ROOT = Path(__file__).resolve().parent
 BOOK = ROOT/'data'/'NL Courtesy-Net-Rates-15202126-English_TFF.xlsx'
@@ -37,6 +38,17 @@ def require_login():
 
 require_login()
 
+token = str(st.secrets.get('GITHUB_TOKEN', '')).strip()
+if 'saved_settings' not in st.session_state:
+    try:
+        settings, sha = load(token) if token else (dict(DEFAULT), None)
+        st.session_state['saved_settings'] = settings
+        st.session_state['settings_sha'] = sha
+    except (ValueError, KeyError) as exc:
+        st.error(f'Instellingen niet geladen: {exc}')
+        st.stop()
+settings = st.session_state['saved_settings']
+
 @st.cache_data
 def cached_book(stamp):
     return load_book(BOOK)
@@ -50,9 +62,19 @@ with st.sidebar:
     st.caption('Ingangsdatum: 27 januari 2026 · locatie ZWO')
     st.download_button('Excel downloaden', BOOK.read_bytes(), file_name=BOOK.name)
     st.divider()
-    fuel = st.number_input('Fuel surcharge %', min_value=0.0, value=0.0, step=0.1, format='%.2f')
-    margin = st.number_input('Winstmarge %', min_value=0.0, value=0.0, step=0.5, format='%.2f')
-    margin_mode = st.selectbox('Margebasis', ['Opslag op inkoop','Marge op verkoop'])
+    fuel = st.number_input('Fuel surcharge %', min_value=0.0, value=settings['fuel'], step=0.1, format='%.2f', key='fuel')
+    margin = st.number_input('Winstmarge %', min_value=0.0, value=settings['margin'], step=0.5, format='%.2f', key='margin')
+    margin_mode = st.selectbox('Margebasis', MODES, index=MODES.index(settings['mode']), key='margin_mode')
+    if not token:
+        st.info('Permanent opslaan vereist GITHUB_TOKEN in Streamlit Secrets.')
+    if st.button('Instellingen opslaan', disabled=not token):
+        try:
+            data = {'fuel':fuel,'margin':margin,'mode':margin_mode}
+            st.session_state['settings_sha'] = save(token,data,st.session_state['settings_sha'])
+            st.session_state['saved_settings'] = data
+            st.success('Fuel en marge permanent opgeslagen.')
+        except (ValueError, KeyError) as exc:
+            st.error(str(exc))
 
 a,b,c = st.columns([1,2,1])
 direction = a.selectbox('Richting', ['Export','Import'])
