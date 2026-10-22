@@ -23,5 +23,17 @@ Test: `python -m unittest discover -s tests`.
 - Branch: `main`
 - Main file path: `app.py`
 
-De Excel in `data/` is inbegrepen; uploaden is niet nodig. Deze nieuwe app heeft
-geen wachtwoordlogin. Invoerwaarden worden alleen in de browsersessie bewaard.
+De Excel in `data/` is inbegrepen; uploaden is niet nodig.
+Invoerwaarden worden alleen in de browsersessie bewaard.
+
+## Wachtwoord
+
+Voeg bij Streamlit Cloud Settings > Secrets toe:
+
+```toml
+APP_PASSWORD = "kies_een_eigen_wachtwoord"
+```
+
+Zonder ingesteld wachtwoord blijft de tariefzoeker geblokkeerd. Lokaal plaats
+je dezelfde instelling in `.streamlit/secrets.toml` (uitgesloten van Git).
+De login beschermt de app; een openbare GitHub-repository blijft openbaar.

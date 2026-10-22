@@ -1,12 +1,41 @@
 from pathlib import Path
 import csv
 import io
+import hmac
 import streamlit as st
 from rates import load_book, shipment, quote, amounts
 
 ROOT = Path(__file__).resolve().parent
 BOOK = ROOT/'data'/'NL Courtesy-Net-Rates-15202126-English_TFF.xlsx'
 st.set_page_config(page_title='Courtesy Tariefzoeker', layout='wide')
+
+def require_login():
+    try:
+        password = st.secrets.get('APP_PASSWORD', '')
+    except FileNotFoundError:
+        password = ''
+    if not isinstance(password, str) or not password:
+        st.title('Courtesy Tariefzoeker')
+        st.warning('Toegang nog niet ingesteld. Voeg APP_PASSWORD toe aan Streamlit Secrets.')
+        st.stop()
+    if st.session_state.get('authenticated', False):
+        if st.sidebar.button('Uitloggen'):
+            st.session_state.clear()
+            st.rerun()
+        return
+    st.title('Courtesy Tariefzoeker')
+    with st.form('login'):
+        entered = st.text_input('Wachtwoord', type='password')
+        submitted = st.form_submit_button('Inloggen')
+    if submitted:
+        if hmac.compare_digest(entered.encode('utf-8'), password.encode('utf-8')):
+            st.session_state['authenticated'] = True
+            st.rerun()
+        else:
+            st.error('Wachtwoord klopt niet.')
+    st.stop()
+
+require_login()
 
 @st.cache_data
 def cached_book(stamp):
